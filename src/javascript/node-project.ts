@@ -10,7 +10,7 @@ import {
   NodePackageOptions,
 } from "./node-package";
 import { Projenrc, ProjenrcOptions } from "./projenrc";
-import { BuildWorkflow, BuildWorkflowCommonOptions } from "../build";
+import { BuildWorkflow, BuildWorkflowOptions } from "../build";
 import { DEFAULT_ARTIFACTS_DIRECTORY } from "../build/private/consts";
 import { PROJEN_DIR } from "../common";
 import { DependencyType } from "../dependencies";
@@ -97,7 +97,7 @@ export interface NodeProjectOptions
   /**
    * Options for PR build workflow.
    */
-  readonly buildWorkflowOptions?: BuildWorkflowOptions;
+  readonly buildWorkflowOptions?: NodeBuildWorkflowOptions;
 
   /**
    * Automatically update files modified during builds to pull-request branches. This means
@@ -343,7 +343,7 @@ export interface NodeProjectOptions
 /**
  * Build workflow options for NodeProject
  */
-export interface BuildWorkflowOptions extends BuildWorkflowCommonOptions {
+export interface NodeBuildWorkflowOptions extends BuildWorkflowOptions {
   /**
    * Automatically update files modified during builds to pull-request branches.
    * This means that any files synthesized by projen or e.g. test snapshots will
@@ -638,19 +638,20 @@ export class NodeProject extends GitHubProject {
       idToken: requiresIdTokenPermission ? JobPermission.WRITE : undefined,
     };
 
-    const buildWorkflowOptions: BuildWorkflowOptions =
-      options.buildWorkflowOptions ?? {};
+      const buildWorkflowOptions = options.buildWorkflowOptions ?? {
+          buildTask: this.buildTask,
+      };
 
     if (buildEnabled && (this.github || GitHub.of(this.root))) {
       this.buildWorkflow = new BuildWorkflow(this, {
-        buildTask: this.buildTask,
         artifactsDirectory: this.artifactsDirectory,
         containerImage: options.workflowContainerImage,
         gitIdentity: this.workflowGitIdentity,
         mutableBuild: options.mutableBuild,
         workflowTriggers: options.buildWorkflowTriggers,
         permissions: workflowPermissions,
-        ...buildWorkflowOptions,
+          ...buildWorkflowOptions,
+        buildTask: buildWorkflowOptions?.buildTask ?? this.buildTask,
         preBuildSteps: this.renderWorkflowSetup({
           installStepConfiguration: {
             workingDirectory: this.determineInstallWorkingDirectory(),
